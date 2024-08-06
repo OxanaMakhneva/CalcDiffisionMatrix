@@ -1,12 +1,38 @@
+'''
+Класс (ChangeText) с методами для предобработки текстовых даннных
+Реализованы:
+- отчистка от символов и лишних пробелов
+- отчистка от повторяющихся символов
+- учет предлога нет (если в строке есть частица не ЕЕ можно объединить с соседним словом)
+- пересчет строки в строку с нормализованными словами, И без стоп слов
+- фильтрация токенов на основании TF-IDF важности
+
+Зависимости:
+re
+pymorphy3
+sklearn.feature_extraction.text.TfidfVectorizer
+'''
+
+
 import re
-import pymorphy2
+import pymorphy3
 from sklearn.feature_extraction.text import TfidfVectorizer
 
-
-#Обрабоcdтка текста внутри ОДНОй колонки
-
+'''
+Класс для Обработки текстовых столбцов
+text_for_fill - строка, которой будут заполняться пустые значения
+repeat_count - число повторений одного символа, которые будут заменять на единичный символ (aaa -> a) 
+connect_ne - надо ли склеивать частицу не с ближайшим правым словом
+trash_symbols - строка символов, которые надо удалять из текстовых данных
+stop_words - список стоп-слов, которые надо удалять из текстовых данных,
+limit_by_tfidf - необходимо ли удалять из строк слова, значимосьб которых по tfidf ниже порога, 
+tfidf_trashold  - порог для значимости по tfidf,
+save_order - нужно ли сохранять порядок слов после фильтрации по tfidf,
+method - метод рассчета расстояний, 
+n_head = 0 - число букв, которые сравниваются как корни при расчете рсстояний методом Левенштейна
+'''
 class ChangeText():
-  def __init__(self, repeat_count = 2, connect_ne = False,
+  def __init__(self, text_for_fill = 'empty', repeat_count = 2, connect_ne = False,
                trash_symbols = '!@#$%^&*()-', stop_words = [],
                limit_by_tfidf = False, tfidf_trashold = 0.3, save_order = False,
                method = 'gover', n_head = 0):
@@ -16,6 +42,7 @@ class ChangeText():
     self.limit_by_tfidf = limit_by_tfidf
     self.tfidf_trashold = tfidf_trashold
     self.save_order = save_order
+    self.text_for_fill = text_for_fill
     self.method = method
     self.n_head = n_head
 #!!! сеттер для n_head
@@ -33,7 +60,7 @@ class ChangeText():
     elif repeat_count < 2:
       raise Exception (f'''ValueError.  Repeat_count must be greate then 1.  Got: {repeat_count}.''')
     else:
-      self._repeat_count =  repeat_count
+      self._repeat_count = repeat_count
 
   #Сеттер и геттер для repeat_count(число повторений букв, которые надо переделать)
   @property
@@ -91,6 +118,18 @@ class ChangeText():
     else:
       self._tfidf_trashold =  tfidf_trashold
 
+#Сеттер и геттер для заполнителя пустых значений
+  @property
+  def text_for_fill(self):
+    return self._text_for_fill
+
+  @text_for_fill.setter
+  def text_for_fill(self, text_for_fill):
+    #Проверка, что передан корректный аргумент
+    if type(text_for_fill) != str:
+      raise Exception (f'''ValueError.  Value "text_for_fill" must be string.  Got: {type(text_for_fill)}.''')
+    self._text_for_fill = text_for_fill
+
   #Отчистка от символов и лишних пробелов
   def clean_text(self, text_list):
     #Шаблон регулярного выражения для удаления заданных символов
@@ -101,12 +140,13 @@ class ChangeText():
 
   #Отчистка от повторяющихся символов
   def delete_repeat_letters(self, text_list):
+    print(text_list)
     #Ищем символы, которые повторяются repeat_count и более раз подряд
     pattern = re.compile(r'(\w)(\1{'+f'{self.repeat_count - 1}'+r',})')
     #заменяем на один раз
     repl = r'\1'
     #Заменяем повторы
-    text_list = [re.sub(pattern, repl, text) for text in text_list]
+    text_list = [re.sub(pattern, repl, str(text)) for text in text_list]
     text_list = [' '.join(text.split()) for text in text_list]
     return text_list
 
@@ -119,12 +159,12 @@ class ChangeText():
     text_list = [' '.join(text.split()) for text in text_list]
     return text_list
 
-  #Пересчитывает строку в строку с нормализованными словами, но без стоп слов
+  #Пересчитывает строки в строку с нормализованными словами, И без стоп слов
   def norm_text(self, text_list):
     #Переводим в нижний регистр
     text_list = [text.lower() for text in text_list]
     #Создаем объект языковой модели
-    morph = pymorphy2.MorphAnalyzer()
+    morph = pymorphy3.MorphAnalyzer()
     #Список нормализованных слов для каждой строки
     new_text_list = []
     for text in text_list:
@@ -175,7 +215,7 @@ class ChangeText():
       finall_text_list.append(finall_words)
     return finall_text_list
 
-  #Порядок обработки текстовых столбцов
+  #Предобработки текстовых столбцов
   def prepare_text(self, text_list):
     text_list = self.delete_repeat_letters(text_list)
     text_list = self.clean_text(text_list)

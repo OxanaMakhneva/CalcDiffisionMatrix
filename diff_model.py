@@ -1,10 +1,21 @@
+'''
+Класс (MyDiff) с методами для расчета матриц расстояний
+Реализованы:
+- сохранение ДФ и параметров его предобработки
+- расчет матриц расстояния
+- расчет новых матриц расстояния с учетом новых значений (доп. строки данных)
+- расчет векторов расстояний для новых значений (доп. строки данных)
+
+Все методы предобработки рассчета расстояний реализованы в импортируемых файлах
+'''
+
 import pandas as pd
-from cat_model import *
+from cat_distance import *
 from num_model import *
+from num_distance import *
 from text_model import *
 
-
-class MyCorr():
+class MyDiff():
   def __init__(self, dx, num_cols = {}, cat_cols = {}, weights = {}):
 
     #Объявляем список функций, которые могут быть выбраны для расчета расстояний
@@ -161,6 +172,7 @@ class MyCorr():
     for col in self.cat_cols:
       #Извлекаем объект - преобразователь текстовых данных
       cat_obj = self.get_cat_obj(col)
+      df[col] = df[col].fillna(cat_obj.text_for_fill)
       df[col] = cat_obj.prepare_text(df[col].values)
       #Обновляем данные по объекту ChangeText в объекте MyCorr
       self.set_cat_obj(col, cat_obj)
@@ -172,8 +184,6 @@ class MyCorr():
       #Обновляем данные по объекту ChangeText в объекте MyCorr
       self.set_num_obj(col, num_obj)
     return df
-
-#qwe
 
   def calc_new_dist_matrix(self, col_name, dist_col):
     dist_matrix = self.dist_matrixes[col_name]
@@ -224,11 +234,15 @@ class MyCorr():
       for col in self.cat_cols:
         method = self.get_cat_obj(col).method
         dist_func = self.dist_funcs[(df_type, method)]
-        self.dist_matrixes[col] = dist_func(self.dx[col].values, self.weights[col], **{'obj': self.cat_objs[col]})
+        dist_matrix = dist_func(self.dx[col].values, self.weights[col], **{'obj': self.cat_objs[col]})
+        print(col, dist_matrix)
+        self.dist_matrixes[col] = dist_matrix
       for col in self.num_cols:
         method = self.get_num_obj(col).method
         dist_func = self.dist_funcs[(df_type, method)]
-        self.dist_matrixes[col] = dist_func(self.dx[col].values, self.weights[col],  **{'obj': self.num_objs[col]})
+        dist_matrix = dist_func(self.dx[col].values, self.weights[col],  **{'obj': self.num_objs[col]})
+        print(col, dist_matrix)
+        self.dist_matrixes[col] = dist_matrix
     finall_matrix = self.calc_finall_matrix()
     return {'finall_matrix':finall_matrix, 'dist_cols': finall_result_dist_cols}
 

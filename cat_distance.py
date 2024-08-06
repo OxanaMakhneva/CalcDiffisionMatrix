@@ -1,3 +1,15 @@
+'''
+Расчет расстояний для категориальных признаков
+Реализованы:
+- расчет расстояний методом Говера
+- расчет расстояний методом Левенштейна
+- расчет расстояний как доля совпашвших слов в тесте
+
+Зависимости:
+Levenshtein
+numpy
+'''
+
 from Levenshtein import distance as lev_dist
 import numpy as np
 
@@ -13,7 +25,7 @@ def gover(one_col, weight, **kwargs):
       dist_matrix = dist_col
   return dist_matrix
 
-#Расчет спмска с вестоками ласстояниям по одному признаку для смивка новых значений
+#Расчет вектора расстояний ГОВЕРА по одному признаку для одного нового значения
 def new_gover(main_col_data, new_col, weight, **kwargs):
   main_col_data = np.append(main_col_data, new_col)
   #Для каждой позичии в векторе
@@ -22,16 +34,18 @@ def new_gover(main_col_data, new_col, weight, **kwargs):
   dist_col = [v*weight for v in dist_col]
   return dist_col
 
-
+#Расчет вектора расстояний (как отношение кол-ва совпавших слов (между новым значением и значением в столбце)
+# к колву слов в новом значении)
 def text_one_value(value, one_col, weight, **kwargs):
   value_set = set(value.split())
   if len(value_set) == 0:
-    dist_col = [0 if len(row_value.split())== 0 else 1 for row_value in one_col]
+    dist_col = [0 if len(row_value.split()) == 0 else 1 for row_value in one_col]
   else:
     dist_col = [1 - (len(value_set & set(row_value.split()))/len(value_set)) for row_value in one_col]
   dist_col = [v*weight for v in dist_col]
   return dist_col
 
+#Расчет матрицы расстояний по одному признаку
 def dist_matrix_text(one_col, weight, **kwargs):
   #Для каждой позичии в векторе
   for ind, value in enumerate(one_col):
@@ -42,7 +56,7 @@ def dist_matrix_text(one_col, weight, **kwargs):
       dist_matrix = dist_col
   return dist_matrix
 
-#Расчет матрицы расстояний по одному признаку для одного нового значения
+#Дорасчет матрицы расстояний одного признака с учетом добавления нового значения
 def new_row_in_text(main_col_data, new_row_data, weight, **kwargs):
   main_col_data = np.append(main_col_data, new_row_data)
   try:
@@ -64,9 +78,9 @@ def new_text(main_col_data, new_col, weight, **kwargs):
   dist_cols.append(dist_col)
   return dist_cols
 
-
 #Расстояние Ливенштейна (Levenshtein distance)
-#distance between words represents the minimum number of single-character edits required to change one word into the other
+#distance between words represents the minimum number of single-character
+# edits required to change one word into the other
 def levenshtain(one_col, weight, **kwargs):
   n_head = kwargs['obj'].n_head
   #Для каждой позичии в векторе
@@ -87,7 +101,7 @@ def levenshtain(one_col, weight, **kwargs):
       dist_matrix.append(dist_col)
   return np.array(dist_matrix)
 
-#Расчет матрицы расстояний по одному признаку для одного нового значения
+#Расчет вектора расстояний на базе ЛЕвенштейна по одному признаку для одного нового значения
 def new_levenshtain(main_col_data, new_col, weight, **kwargs):
   main_col_data = np.append(main_col_data, new_col)
   n_head = kwargs['obj'].n_head
